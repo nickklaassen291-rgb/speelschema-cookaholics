@@ -47,7 +47,7 @@ export default function Geweest() {
         occasion,
         gasten: gastenCount(occasion),
         ja: rsvpCounts(occasion).Ja,
-        terugkoppelingPreview: (occasion.terugkoppeling ?? "").split("\n")[0],
+        terugkoppelingPreview: occasion.terugkoppeling ?? "",
       })),
     [past, gastenCount, rsvpCounts],
   );
@@ -141,6 +141,7 @@ export default function Geweest() {
           <OccasionsTable
             rows={rows}
             showTerugkoppeling
+            hideLocatieType
             selectedId={selectedOccasionId}
             onSelect={(id) => setSelectedOccasionId((current) => (current === id ? null : id))}
             emptyLabel="Geen afgelopen wedstrijden of events."

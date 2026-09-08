@@ -33,6 +33,7 @@ export type OccasionRow = {
 type Props = {
   rows: OccasionRow[];
   showTerugkoppeling?: boolean;
+  hideLocatieType?: boolean;
   onSelect: (id: string) => void;
   emptyLabel: string;
   selectedId?: string | null;
@@ -42,6 +43,7 @@ type Props = {
 export default function OccasionsTable({
   rows,
   showTerugkoppeling,
+  hideLocatieType,
   onSelect,
   emptyLabel,
   selectedId,
@@ -51,7 +53,7 @@ export default function OccasionsTable({
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">{emptyLabel}</p>;
   }
 
-  const columnCount = 7 + (showTerugkoppeling ? 1 : 0);
+  const columnCount = 7 - (hideLocatieType ? 2 : 0) + (showTerugkoppeling ? 1 : 0);
 
   return (
     <div className="min-w-0 overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -60,8 +62,8 @@ export default function OccasionsTable({
           <tr className="border-b border-zinc-200 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <th className="px-4 py-2">Datum</th>
             <th className="px-4 py-2">Naam</th>
-            <th className="px-4 py-2">Locatie</th>
-            <th className="px-4 py-2">Type</th>
+            {!hideLocatieType && <th className="px-4 py-2">Locatie</th>}
+            {!hideLocatieType && <th className="px-4 py-2">Type</th>}
             <th className="px-4 py-2">Aanwezig namens Cookaholics</th>
             <th className="px-4 py-2">Gasten</th>
             <th className="px-4 py-2">Ja</th>
@@ -82,8 +84,12 @@ export default function OccasionsTable({
             >
               <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">{formatShortDate(occasion.datum)}</td>
               <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{occasion.naam}</td>
-              <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{occasion.locatie || "–"}</td>
-              <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{occasion.type}</td>
+              {!hideLocatieType && (
+                <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{occasion.locatie || "–"}</td>
+              )}
+              {!hideLocatieType && (
+                <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{occasion.type}</td>
+              )}
               <td className="px-4 py-3">
                 {occasion.aanwezig && occasion.aanwezig.length > 0 ? (
                   <span className="text-zinc-700 dark:text-zinc-300">{occasion.aanwezig.join(", ")}</span>
@@ -98,7 +104,7 @@ export default function OccasionsTable({
               <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{gasten}</td>
               <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{ja}</td>
               {showTerugkoppeling && (
-                <td className="max-w-xs truncate px-4 py-3 text-zinc-500 dark:text-zinc-400">
+                <td className="max-w-xs overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3 text-zinc-500 sm:max-w-md sm:overflow-visible sm:whitespace-normal sm:text-clip dark:text-zinc-400">
                   {terugkoppelingPreview || "–"}
                 </td>
               )}
