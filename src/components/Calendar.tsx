@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { OccasionSelectOptions, RSVPStatus } from "@/lib/airtable";
-import { contactFullName } from "@/lib/airtable";
-import { createOccasion, fetchOccasionSelectOptions, updateOccasion } from "@/lib/airtableClient";
+import type { OccasionSelectOptions, RSVPStatus, TerugkoppelingDoor } from "@/lib/airtable";
+import { contactFullName, TERUGKOPPELING_DOOR } from "@/lib/airtable";
+import {
+  createAirtableRecord,
+  createOccasion,
+  fetchOccasionSelectOptions,
+  updateOccasion,
+} from "@/lib/airtableClient";
 import { useOccasions } from "@/lib/useOccasions";
 import OccasionsTable from "@/components/OccasionsTable";
 import OccasionForm, { EMPTY_OCCASION_FORM_VALUES, type OccasionFormValues } from "@/components/OccasionForm";
@@ -15,9 +20,14 @@ const RSVP_STYLES: Record<RSVPStatus, string> = {
 };
 
 export default function Calendar() {
-  const { occasions, contactsById, loading, error, invitesFor, rsvpCounts, reload } = useOccasions();
+  const { occasions, contacts, contactsById, loading, error, invitesFor, rsvpCounts, reload } = useOccasions();
   const [selectedOccasionId, setSelectedOccasionId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+
+  const [uitgenodigdDoor, setUitgenodigdDoor] = useState<TerugkoppelingDoor | "">("");
+  const [gastZoekterm, setGastZoekterm] = useState("");
+  const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const [selectOptions, setSelectOptions] = useState<OccasionSelectOptions | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -65,6 +75,42 @@ export default function Calendar() {
 
   const selectedOccasion = upcoming.find((o) => o.id === selectedOccasionId) ?? null;
   const selectedInvites = selectedOccasion ? invitesFor(selectedOccasion) : [];
+
+  const alreadyInvitedIds = new Set(selectedInvites.map((inv) => inv.fields.Contact?.[0]).filter(Boolean));
+  const matchingContacts =
+    gastZoekterm.trim().length < 2
+      ? []
+      : contacts
+          .filter((c) => !alreadyInvitedIds.has(c.id))
+          .filter((c) => {
+            const q = gastZoekterm.toLowerCase();
+            return (
+              contactFullName(c.fields).toLowerCase().includes(q) ||
+              c.fields.Email?.toLowerCase().includes(q) ||
+              c.fields.Bedrijf?.toLowerCase().includes(q)
+            );
+          });
+
+  async function handleLinkGuest(contactId: string) {
+    if (!selectedOccasion) return;
+    setLinking(true);
+    setLinkError(null);
+    try {
+      await createAirtableRecord("Uitnodigingen", {
+        Contact: [contactId],
+        ...(selectedOccasion.type === "Wedstrijd" ? { Wedstrijd: [selectedOccasion.id] } : {}),
+        ...(selectedOccasion.type === "Event" ? { Events: [selectedOccasion.id] } : {}),
+        "RSVP Status": "Wacht op antwoord",
+        ...(uitgenodigdDoor ? { "Uitgenodigd door": uitgenodigdDoor } : {}),
+      });
+      setGastZoekterm("");
+      await reload();
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : "Koppelen mislukt.");
+    } finally {
+      setLinking(false);
+    }
+  }
 
   async function handleUpdate(values: OccasionFormValues) {
     if (!selectedOccasion) return;
@@ -116,6 +162,8 @@ export default function Calendar() {
             onSelect={(id) => {
               setSelectedOccasionId(id);
               setEditing(false);
+              setGastZoekterm("");
+              setLinkError(null);
             }}
             emptyLabel="Geen toekomstige wedstrijden of events."
           />
@@ -171,9 +219,6 @@ export default function Calendar() {
                           Aanwezig: {selectedOccasion.aanwezig.join(", ")}
                         </p>
                       )}
-                      {selectedOccasion.notities && (
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{selectedOccasion.notities}</p>
-                      )}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -224,6 +269,62 @@ export default function Calendar() {
                       );
                     })}
                   </ul>
+
+                  <div className="mt-4 flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                    <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Gast koppelen</p>
+                    {linkError && (
+                      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                        {linkError}
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <select
+                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
+                        value={uitgenodigdDoor}
+                        onChange={(e) => setUitgenodigdDoor(e.target.value as TerugkoppelingDoor | "")}
+                      >
+                        <option value="">Uitgenodigd door...</option>
+                        {TERUGKOPPELING_DOOR.map((persoon) => (
+                          <option key={persoon} value={persoon}>
+                            {persoon}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
+                        value={gastZoekterm}
+                        onChange={(e) => setGastZoekterm(e.target.value)}
+                        placeholder="Zoek een contact op naam, email of bedrijf"
+                      />
+                    </div>
+
+                    {gastZoekterm.trim().length >= 2 && (
+                      <ul className="flex flex-col divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                        {matchingContacts.length === 0 && (
+                          <li className="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400">
+                            Geen contacten gevonden.
+                          </li>
+                        )}
+                        {matchingContacts.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              disabled={linking}
+                              onClick={() => handleLinkGuest(c.id)}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-zinc-50 disabled:opacity-50 dark:hover:bg-zinc-800"
+                            >
+                              <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                                {contactFullName(c.fields)}
+                              </span>
+                              {c.fields.Bedrijf && (
+                                <span className="text-zinc-500 dark:text-zinc-400"> · {c.fields.Bedrijf}</span>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </>
               )}
             </div>

@@ -7,9 +7,10 @@
  *   - Voornaam (text)
  *   - Achternaam (text)
  *   - Email (email)
- *   - Telefoon (phone/text)
+ *   - Telefoonnummer (phone)
  *   - Bedrijf (text)
  *   - Notities (long text)
+ *   - Uitnodigingen (link naar Uitnodigingen)
  *
  * Wedstrijden
  *   - Naam (text)
@@ -18,7 +19,6 @@
  *   - Locatie (text)
  *   - Type (single select — niet beheerd via de app)
  *   - Aanwezig (multi select, opties via getOccasionSelectOptions(): wie is er namens Cookaholics bij)
- *   - Notities (long text)
  *   - Terugkoppeling (long text)
  *   - Terugkoppeling door (single select: "Gijs" | "Steffan" | "Lotte" | "Nick" | "Lynn")
  *
@@ -29,7 +29,6 @@
  *   - Type (single select — niet beheerd via de app)
  *   - Locatie (text)
  *   - Aanwezig (multi select, opties via getOccasionSelectOptions(): wie is er namens Cookaholics bij)
- *   - Notities (long text)
  *   - Uitnodigingen (link naar Uitnodigingen)
  *   - Terugkoppeling (long text)
  *   - Terugkoppeling door (single select: "Gijs" | "Steffan" | "Lotte" | "Nick" | "Lynn")
@@ -39,8 +38,8 @@
  *   - Wedstrijd (link naar Wedstrijden)
  *   - Events (link naar Events)
  *   - RSVP Status (single select: "Ja" | "Nee" | "Wacht op antwoord")
+ *   - Uitgenodigd door (text)
  *   - Verstuurd op (date)
- *   - Notities (long text)
  *
  * Dit bestand draait alleen server-side (gebruikt AIRTABLE_API_TOKEN, geen
  * NEXT_PUBLIC_ prefix). Client components praten met /api/airtable.
@@ -81,7 +80,7 @@ export interface ContactFields {
   Voornaam: string;
   Achternaam: string;
   Email?: string;
-  Telefoon?: string;
+  Telefoonnummer?: string;
   Bedrijf?: string;
   Notities?: string;
 }
@@ -97,7 +96,6 @@ export interface WedstrijdFields {
   Locatie?: string;
   Type?: string;
   Aanwezig?: string[];
-  Notities?: string;
   Terugkoppeling?: string;
   "Terugkoppeling door"?: TerugkoppelingDoor;
 }
@@ -109,7 +107,6 @@ export interface EventFields {
   Type?: string;
   Locatie?: string;
   Aanwezig?: string[];
-  Notities?: string;
   Uitnodigingen?: string[];
   Terugkoppeling?: string;
   "Terugkoppeling door"?: TerugkoppelingDoor;
@@ -122,8 +119,8 @@ export interface UitnodigingFields {
   Wedstrijd?: string[];
   Events?: string[];
   "RSVP Status"?: RSVPStatus;
+  "Uitgenodigd door"?: string;
   "Verstuurd op"?: string;
-  Notities?: string;
 }
 
 export type FieldsFor<T extends TableName> = T extends "Contacten"

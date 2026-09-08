@@ -17,7 +17,7 @@ const EMPTY_FORM: ContactFields = {
   Voornaam: "",
   Achternaam: "",
   Email: "",
-  Telefoon: "",
+  Telefoonnummer: "",
   Bedrijf: "",
   Notities: "",
 };
@@ -55,7 +55,7 @@ export default function GuestManager() {
       Voornaam: contact.fields.Voornaam ?? "",
       Achternaam: contact.fields.Achternaam ?? "",
       Email: contact.fields.Email ?? "",
-      Telefoon: contact.fields.Telefoon ?? "",
+      Telefoonnummer: contact.fields.Telefoonnummer ?? "",
       Bedrijf: contact.fields.Bedrijf ?? "",
       Notities: contact.fields.Notities ?? "",
     });
@@ -73,7 +73,7 @@ export default function GuestManager() {
       Voornaam: voornaam ?? "",
       Achternaam: rest.join(" "),
       Email: contact.email,
-      Telefoon: contact.telefoon,
+      Telefoonnummer: contact.telefoon,
       Bedrijf: contact.bedrijf,
     });
   }
@@ -119,7 +119,7 @@ export default function GuestManager() {
     return (
       contactFullName(c.fields).toLowerCase().includes(q) ||
       c.fields.Email?.toLowerCase().includes(q) ||
-      c.fields.Telefoon?.toLowerCase().includes(q) ||
+      c.fields.Telefoonnummer?.toLowerCase().includes(q) ||
       c.fields.Bedrijf?.toLowerCase().includes(q)
     );
   });
@@ -182,8 +182,8 @@ export default function GuestManager() {
           <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Telefoon</label>
           <input
             className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-            value={form.Telefoon}
-            onChange={(e) => setForm({ ...form, Telefoon: e.target.value })}
+            value={form.Telefoonnummer}
+            onChange={(e) => setForm({ ...form, Telefoonnummer: e.target.value })}
             placeholder="06 12345678"
           />
         </div>
@@ -244,7 +244,7 @@ export default function GuestManager() {
               <div>
                 <p className="font-medium text-zinc-900 dark:text-zinc-50">{contactFullName(contact.fields)}</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {[contact.fields.Email, contact.fields.Telefoon, contact.fields.Bedrijf]
+                  {[contact.fields.Email, contact.fields.Telefoonnummer, contact.fields.Bedrijf]
                     .filter(Boolean)
                     .join(" · ") || "Geen contactgegevens"}
                 </p>
