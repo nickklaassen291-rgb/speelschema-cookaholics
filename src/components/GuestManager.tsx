@@ -9,6 +9,7 @@ import {
   fetchRecords,
   updateAirtableRecord,
 } from "@/lib/airtableClient";
+import AttioZoeker, { type AttioContact } from "@/components/AttioZoeker";
 
 type Contact = AirtableRecord<ContactFields>;
 
@@ -63,6 +64,18 @@ export default function GuestManager() {
   function cancelEdit() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+  }
+
+  function handleAttioSelect(contact: AttioContact) {
+    const [voornaam, ...rest] = contact.naam.trim().split(/\s+/);
+    setForm({
+      ...form,
+      Voornaam: voornaam ?? "",
+      Achternaam: rest.join(" "),
+      Email: contact.email,
+      Telefoon: contact.telefoon,
+      Bedrijf: contact.bedrijf,
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,6 +138,13 @@ export default function GuestManager() {
           {error}
         </div>
       )}
+
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <h3 className="mb-2 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          Zoek contact in Attio
+        </h3>
+        <AttioZoeker onSelect={handleAttioSelect} />
+      </div>
 
       <form
         onSubmit={handleSubmit}
