@@ -13,6 +13,7 @@ type Occasion = {
   type: "Wedstrijd" | "Event";
   naam: string;
   datum?: string;
+  tijd?: string;
   locatie?: string;
 };
 
@@ -26,10 +27,11 @@ function formatDate(iso?: string) {
 function defaultTemplate(naam: string, occasion?: Occasion) {
   const wedstrijdNaam = occasion?.naam ?? "[wedstrijd]";
   const datum = occasion ? formatDate(occasion.datum) : "[datum]";
+  const tijd = occasion?.tijd ? ` om ${occasion.tijd}` : "";
   const locatie = occasion?.locatie || "[locatie]";
   return `Hoi ${naam || "[naam]"}! 🏆
 
-Je bent uitgenodigd voor ${wedstrijdNaam} op ${datum} in ${locatie}.
+Je bent uitgenodigd voor ${wedstrijdNaam} op ${datum}${tijd} in ${locatie}.
 
 Laat je ons weten of je erbij bent? 🙌
 
@@ -72,6 +74,7 @@ export default function InviteGenerator() {
             type: "Wedstrijd",
             naam: w.fields.Naam,
             datum: w.fields.Datum,
+            tijd: w.fields.Tijd,
             locatie: w.fields.Locatie,
           })),
           ...events.map<Occasion>((ev) => ({
@@ -80,6 +83,7 @@ export default function InviteGenerator() {
             type: "Event",
             naam: ev.fields.Naam,
             datum: ev.fields.Datum,
+            tijd: ev.fields.Tijd,
             locatie: ev.fields.Locatie,
           })),
         ].sort((a, b) => (a.datum ?? "").localeCompare(b.datum ?? ""));
@@ -183,6 +187,7 @@ export default function InviteGenerator() {
               {occasions.map((o) => (
                 <option key={o.key} value={o.key}>
                   [{o.type}] {o.naam} {o.datum ? `– ${formatDate(o.datum)}` : ""}
+                  {o.tijd ? ` ${o.tijd}` : ""}
                 </option>
               ))}
             </select>
