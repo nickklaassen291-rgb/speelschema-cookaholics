@@ -216,6 +216,31 @@ export default function Calendar() {
     await reload();
   }
 
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDeleteOccasion() {
+    if (!selectedOccasion) return;
+    if (
+      !confirm(
+        `Weet je zeker dat je "${selectedOccasion.naam}" wilt verwijderen? Alle bijbehorende uitnodigingen blijven bestaan maar verliezen de koppeling.`,
+      )
+    )
+      return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAirtableRecord(selectedOccasion.table, selectedOccasion.id);
+      setSelectedOccasionId(null);
+      setEditing(false);
+      await reload();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Verwijderen mislukt.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -298,6 +323,11 @@ export default function Calendar() {
                       {selectedOccasion.type} bewerken
                     </p>
                   </div>
+                  {deleteError && (
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                      {deleteError}
+                    </div>
+                  )}
                   <OccasionForm
                     initialValues={{
                       soort: selectedOccasion.type,
@@ -320,6 +350,16 @@ export default function Calendar() {
                     submitLabel="Wijzigingen opslaan"
                     submittingLabel="Opslaan..."
                   />
+                  <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={handleDeleteOccasion}
+                      disabled={deleting}
+                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950"
+                    >
+                      {deleting ? "Verwijderen..." : `${selectedOccasion.type} verwijderen`}
+                    </button>
+                  </div>
                 </>
               ) : (
                 <>
