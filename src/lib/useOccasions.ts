@@ -26,6 +26,7 @@ export type Occasion = {
   terugkoppelingDoor?: TerugkoppelingDoor;
   club?: Club;
   businessclubEvent?: boolean;
+  beschikbarePlaatsen?: number | null;
 };
 
 export type Uitnodiging = AirtableRecord<UitnodigingFields>;
@@ -68,6 +69,7 @@ export function useOccasions() {
             terugkoppeling: w.fields.Terugkoppeling,
             terugkoppelingDoor: w.fields["Terugkoppeling door"],
             club: w.fields.Club,
+            beschikbarePlaatsen: w.fields["Beschikbare plaatsen"],
           })),
         ...events
           .filter((ev) => ev.fields.Datum)
@@ -84,6 +86,7 @@ export function useOccasions() {
             terugkoppelingDoor: ev.fields["Terugkoppeling door"],
             club: ev.fields.Club,
             businessclubEvent: ev.fields["Businessclub event"],
+            beschikbarePlaatsen: ev.fields["Beschikbare plaatsen"],
           })),
       ];
 

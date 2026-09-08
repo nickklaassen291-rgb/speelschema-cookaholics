@@ -102,6 +102,7 @@ export interface WedstrijdFields {
   Type?: string;
   Club?: Club;
   Aanwezig?: string[];
+  "Beschikbare plaatsen"?: number | null;
   Terugkoppeling?: string;
   "Terugkoppeling door"?: TerugkoppelingDoor;
 }
@@ -115,6 +116,7 @@ export interface EventFields {
   "Businessclub event"?: boolean;
   Locatie?: string;
   Aanwezig?: string[];
+  "Beschikbare plaatsen"?: number | null;
   Uitnodigingen?: string[];
   Terugkoppeling?: string;
   "Terugkoppeling door"?: TerugkoppelingDoor;

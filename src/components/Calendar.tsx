@@ -12,7 +12,7 @@ import {
   updateOccasion,
 } from "@/lib/airtableClient";
 import { useOccasions } from "@/lib/useOccasions";
-import OccasionsTable from "@/components/OccasionsTable";
+import OccasionsTable, { daysUntil } from "@/components/OccasionsTable";
 import OccasionForm, { EMPTY_OCCASION_FORM_VALUES, type OccasionFormValues } from "@/components/OccasionForm";
 import InviteList, { RSVP_STYLES } from "@/components/InviteList";
 import type { Occasion } from "@/lib/useOccasions";
@@ -85,6 +85,7 @@ export default function Calendar() {
       Aanwezig: values.aanwezig,
       ...(values.club ? { Club: values.club } : {}),
       ...(values.soort === "Event" ? { "Businessclub event": values.businessclubEvent } : {}),
+      ...(values.beschikbarePlaatsen.trim() ? { "Beschikbare plaatsen": Number(values.beschikbarePlaatsen) } : {}),
     });
     setCreateFormKey((k) => k + 1);
     await reload();
@@ -209,6 +210,7 @@ export default function Calendar() {
       Aanwezig: values.aanwezig,
       ...(values.club ? { Club: values.club } : {}),
       ...(values.soort === "Event" ? { "Businessclub event": values.businessclubEvent } : {}),
+      "Beschikbare plaatsen": values.beschikbarePlaatsen.trim() ? Number(values.beschikbarePlaatsen) : null,
     });
     setEditing(false);
     await reload();
@@ -306,6 +308,10 @@ export default function Calendar() {
                       aanwezig: selectedOccasion.aanwezig ?? [],
                       club: selectedOccasion.club ?? "",
                       businessclubEvent: selectedOccasion.businessclubEvent ?? false,
+                      beschikbarePlaatsen:
+                        selectedOccasion.beschikbarePlaatsen != null
+                          ? String(selectedOccasion.beschikbarePlaatsen)
+                          : "",
                     }}
                     soortLocked
                     aanwezigOpties={aanwezigOpties}
@@ -335,9 +341,21 @@ export default function Calendar() {
                         {selectedOccasion.tijd ? ` · ${selectedOccasion.tijd}` : ""}
                         {selectedOccasion.locatie ? ` · ${selectedOccasion.locatie}` : ""}
                       </p>
-                      {selectedOccasion.aanwezig && selectedOccasion.aanwezig.length > 0 && (
+                      {selectedOccasion.aanwezig && selectedOccasion.aanwezig.length > 0 ? (
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                           Aanwezig: {selectedOccasion.aanwezig.join(", ")}
+                        </p>
+                      ) : (
+                        daysUntil(selectedOccasion.datum) >= 0 &&
+                        daysUntil(selectedOccasion.datum) <= 30 && (
+                          <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+                            Nog niemand namens Cookaholics toegewezen
+                          </p>
+                        )
+                      )}
+                      {selectedOccasion.beschikbarePlaatsen != null && (
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          Beschikbare plaatsen: {selectedOccasion.beschikbarePlaatsen}
                         </p>
                       )}
                     </div>
