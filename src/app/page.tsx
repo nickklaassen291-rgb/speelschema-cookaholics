@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Calendar from "@/components/Calendar";
+import Geweest from "@/components/Geweest";
 import GuestManager from "@/components/GuestManager";
 import InviteGenerator from "@/components/InviteGenerator";
 
@@ -9,6 +10,7 @@ const TABS = [
   { key: "kalender", label: "Kalender" },
   { key: "gasten", label: "Gasten" },
   { key: "uitnodiging", label: "Uitnodiging" },
+  { key: "geweest", label: "Geweest" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -47,6 +49,7 @@ export default function Home() {
         {tab === "kalender" && <Calendar />}
         {tab === "gasten" && <GuestManager />}
         {tab === "uitnodiging" && <InviteGenerator />}
+        {tab === "geweest" && <Geweest />}
       </main>
     </div>
   );

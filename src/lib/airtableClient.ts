@@ -5,6 +5,7 @@ import type {
   AirtableRecord,
   FieldsFor,
   TableName,
+  TerugkoppelingDoor,
 } from "@/lib/airtable";
 
 async function handle<T>(res: Response): Promise<T> {
@@ -51,6 +52,14 @@ export async function updateAirtableRecord<T extends TableName>(
   });
   const data = await handle<{ record: AirtableRecord<FieldsFor<T>> }>(res);
   return data.record;
+}
+
+export async function updateTerugkoppeling(
+  table: "Wedstrijden" | "Events",
+  id: string,
+  values: { Terugkoppeling: string; "Terugkoppeling door"?: TerugkoppelingDoor },
+): Promise<AirtableRecord<FieldsFor<typeof table>>> {
+  return updateAirtableRecord(table, id, values as Partial<FieldsFor<typeof table>>);
 }
 
 export async function deleteAirtableRecord(table: TableName, id: string): Promise<void> {

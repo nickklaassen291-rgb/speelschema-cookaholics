@@ -16,6 +16,8 @@
  *   - Datum (date)
  *   - Locatie (text)
  *   - Notities (long text)
+ *   - Terugkoppeling (long text)
+ *   - Terugkoppeling door (single select: "Gijs" | "Steffan" | "Lotte" | "Nick" | "Lynn")
  *
  * Events
  *   - Naam (text)
@@ -23,6 +25,9 @@
  *   - Type (text, bv. "Training", "Feest", "Overig")
  *   - Locatie (text)
  *   - Notities (long text)
+ *   - Uitnodigingen (link naar Uitnodigingen)
+ *   - Terugkoppeling (long text)
+ *   - Terugkoppeling door (single select: "Gijs" | "Steffan" | "Lotte" | "Nick" | "Lynn")
  *
  * Uitnodigingen
  *   - Contact (link naar Contacten)
@@ -51,6 +56,16 @@ export type RSVPStatus = "Ja" | "Nee" | "Wacht op antwoord";
 
 export const RSVP_STATUSSEN: RSVPStatus[] = ["Ja", "Nee", "Wacht op antwoord"];
 
+export type TerugkoppelingDoor = "Gijs" | "Steffan" | "Lotte" | "Nick" | "Lynn";
+
+export const TERUGKOPPELING_DOOR: TerugkoppelingDoor[] = [
+  "Gijs",
+  "Steffan",
+  "Lotte",
+  "Nick",
+  "Lynn",
+];
+
 export interface AirtableRecord<T> {
   id: string;
   createdTime: string;
@@ -75,6 +90,8 @@ export interface WedstrijdFields {
   Datum: string;
   Locatie?: string;
   Notities?: string;
+  Terugkoppeling?: string;
+  "Terugkoppeling door"?: TerugkoppelingDoor;
 }
 
 export interface EventFields {
@@ -83,6 +100,9 @@ export interface EventFields {
   Type?: string;
   Locatie?: string;
   Notities?: string;
+  Uitnodigingen?: string[];
+  Terugkoppeling?: string;
+  "Terugkoppeling door"?: TerugkoppelingDoor;
 }
 
 export interface UitnodigingFields {
@@ -197,6 +217,14 @@ export async function updateRecord<T extends TableName>(
     method: "PATCH",
     body: JSON.stringify({ fields, typecast: true }),
   });
+}
+
+export async function updateTerugkoppeling(
+  table: "Wedstrijden" | "Events",
+  id: string,
+  values: { Terugkoppeling: string; "Terugkoppeling door"?: TerugkoppelingDoor },
+): Promise<AirtableRecord<FieldsFor<typeof table>>> {
+  return updateRecord(table, id, values as Partial<FieldsFor<typeof table>>);
 }
 
 export async function deleteRecord<T extends TableName>(
