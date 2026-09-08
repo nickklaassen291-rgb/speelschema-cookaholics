@@ -138,8 +138,8 @@ export default function InviteGenerator() {
       await createAirtableRecord("Uitnodigingen", {
         Contact: [contactId],
         ...(selectedOccasion.type === "Wedstrijd" ? { Wedstrijd: [selectedOccasion.id] } : {}),
-        ...(selectedOccasion.type === "Event" ? { Event: [selectedOccasion.id] } : {}),
-        RSVP: "Wacht op antwoord",
+        ...(selectedOccasion.type === "Event" ? { Events: [selectedOccasion.id] } : {}),
+        "RSVP Status": "Wacht op antwoord",
         "Verstuurd op": new Date().toISOString().slice(0, 10),
       });
       setCopied(false);

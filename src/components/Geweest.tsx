@@ -136,7 +136,7 @@ export default function Geweest() {
                 {selectedInvites.map((inv) => {
                   const contactId = inv.fields.Contact?.[0];
                   const contact = contactId ? contactsById.get(contactId) : undefined;
-                  const status = inv.fields.RSVP ?? "Wacht op antwoord";
+                  const status = inv.fields["RSVP Status"] ?? "Wacht op antwoord";
                   return (
                     <li key={inv.id} className="flex items-center justify-between py-2 text-sm">
                       <span className="text-zinc-900 dark:text-zinc-50">

@@ -3,9 +3,13 @@
  */
 import type {
   AirtableRecord,
+  EventFields,
   FieldsFor,
+  OccasionSelectOptions,
+  OccasionSoort,
   TableName,
   TerugkoppelingDoor,
+  WedstrijdFields,
 } from "@/lib/airtable";
 
 async function handle<T>(res: Response): Promise<T> {
@@ -30,11 +34,12 @@ export async function fetchRecords<T extends TableName>(
 export async function createAirtableRecord<T extends TableName>(
   table: T,
   fields: Partial<FieldsFor<T>>,
+  options?: { typecast?: boolean },
 ): Promise<AirtableRecord<FieldsFor<T>>> {
   const res = await fetch("/api/airtable", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ table, fields }),
+    body: JSON.stringify({ table, fields, typecast: options?.typecast ?? true }),
   });
   const data = await handle<{ record: AirtableRecord<FieldsFor<T>> }>(res);
   return data.record;
@@ -44,11 +49,12 @@ export async function updateAirtableRecord<T extends TableName>(
   table: T,
   id: string,
   fields: Partial<FieldsFor<T>>,
+  options?: { typecast?: boolean },
 ): Promise<AirtableRecord<FieldsFor<T>>> {
   const res = await fetch("/api/airtable", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ table, id, fields }),
+    body: JSON.stringify({ table, id, fields, typecast: options?.typecast ?? true }),
   });
   const data = await handle<{ record: AirtableRecord<FieldsFor<T>> }>(res);
   return data.record;
@@ -59,7 +65,23 @@ export async function updateTerugkoppeling(
   id: string,
   values: { Terugkoppeling: string; "Terugkoppeling door"?: TerugkoppelingDoor },
 ): Promise<AirtableRecord<FieldsFor<typeof table>>> {
-  return updateAirtableRecord(table, id, values as Partial<FieldsFor<typeof table>>);
+  // typecast uit: "Terugkoppeling door" is single select, mag geen nieuwe optie aanmaken.
+  return updateAirtableRecord(table, id, values as Partial<FieldsFor<typeof table>>, { typecast: false });
+}
+
+export async function createOccasion(
+  soort: OccasionSoort,
+  fields: Partial<WedstrijdFields> | Partial<EventFields>,
+): Promise<AirtableRecord<WedstrijdFields> | AirtableRecord<EventFields>> {
+  // typecast uit: Locatie en Type zijn single select, mogen geen nieuwe optie aanmaken.
+  return soort === "Wedstrijd"
+    ? createAirtableRecord("Wedstrijden", fields as Partial<WedstrijdFields>, { typecast: false })
+    : createAirtableRecord("Events", fields as Partial<EventFields>, { typecast: false });
+}
+
+export async function fetchOccasionSelectOptions(): Promise<OccasionSelectOptions> {
+  const res = await fetch("/api/airtable/opties");
+  return handle<OccasionSelectOptions>(res);
 }
 
 export async function deleteAirtableRecord(table: TableName, id: string): Promise<void> {

@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       throw new Error("Body moet een 'fields' object bevatten.");
     }
 
-    const record = await createRecord(table, body.fields);
+    const record = await createRecord(table, body.fields, { typecast: body.typecast ?? true });
     return NextResponse.json({ record }, { status: 201 });
   } catch (err) {
     return errorResponse(err);
@@ -72,7 +72,7 @@ export async function PATCH(request: NextRequest) {
       throw new Error("Body moet een 'fields' object bevatten.");
     }
 
-    const record = await updateRecord(table, body.id, body.fields);
+    const record = await updateRecord(table, body.id, body.fields, { typecast: body.typecast ?? true });
     return NextResponse.json({ record });
   } catch (err) {
     return errorResponse(err);

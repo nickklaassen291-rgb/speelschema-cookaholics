@@ -97,7 +97,7 @@ export function useOccasions() {
   const invitesFor = useCallback(
     (occasion: Occasion): Uitnodiging[] => {
       return uitnodigingen.filter((u) => {
-        const ids = occasion.type === "Wedstrijd" ? u.fields.Wedstrijd : u.fields.Event;
+        const ids = occasion.type === "Wedstrijd" ? u.fields.Wedstrijd : u.fields.Events;
         return ids?.includes(occasion.id);
       });
     },
@@ -109,7 +109,8 @@ export function useOccasions() {
       const invites = invitesFor(occasion);
       const counts: Record<RSVPStatus, number> = { Ja: 0, Nee: 0, "Wacht op antwoord": 0 };
       for (const inv of invites) {
-        if (inv.fields.RSVP) counts[inv.fields.RSVP] += 1;
+        const status = inv.fields["RSVP Status"];
+        if (status) counts[status] += 1;
       }
       return counts;
     },

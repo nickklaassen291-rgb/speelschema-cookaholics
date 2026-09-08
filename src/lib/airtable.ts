@@ -14,7 +14,9 @@
  * Wedstrijden
  *   - Naam (text)
  *   - Datum (date)
- *   - Locatie (text)
+ *   - Tijd (text)
+ *   - Locatie (single select, opties via getOccasionSelectOptions())
+ *   - Type (single select, opties via getOccasionSelectOptions())
  *   - Notities (long text)
  *   - Terugkoppeling (long text)
  *   - Terugkoppeling door (single select: "Gijs" | "Steffan" | "Lotte" | "Nick" | "Lynn")
@@ -22,7 +24,8 @@
  * Events
  *   - Naam (text)
  *   - Datum (date)
- *   - Type (text, bv. "Training", "Feest", "Overig")
+ *   - Tijd (text)
+ *   - Type (single select, opties via getOccasionSelectOptions())
  *   - Locatie (text)
  *   - Notities (long text)
  *   - Uitnodigingen (link naar Uitnodigingen)
@@ -32,8 +35,8 @@
  * Uitnodigingen
  *   - Contact (link naar Contacten)
  *   - Wedstrijd (link naar Wedstrijden)
- *   - Event (link naar Events)
- *   - RSVP (single select: "Ja" | "Nee" | "Wacht op antwoord")
+ *   - Events (link naar Events)
+ *   - RSVP Status (single select: "Ja" | "Nee" | "Wacht op antwoord")
  *   - Verstuurd op (date)
  *   - Notities (long text)
  *
@@ -88,7 +91,9 @@ export function contactFullName(fields: Pick<ContactFields, "Voornaam" | "Achter
 export interface WedstrijdFields {
   Naam: string;
   Datum: string;
+  Tijd?: string;
   Locatie?: string;
+  Type?: string;
   Notities?: string;
   Terugkoppeling?: string;
   "Terugkoppeling door"?: TerugkoppelingDoor;
@@ -97,6 +102,7 @@ export interface WedstrijdFields {
 export interface EventFields {
   Naam: string;
   Datum: string;
+  Tijd?: string;
   Type?: string;
   Locatie?: string;
   Notities?: string;
@@ -105,11 +111,13 @@ export interface EventFields {
   "Terugkoppeling door"?: TerugkoppelingDoor;
 }
 
+export type OccasionSoort = "Wedstrijd" | "Event";
+
 export interface UitnodigingFields {
   Contact?: string[];
   Wedstrijd?: string[];
-  Event?: string[];
-  RSVP?: RSVPStatus;
+  Events?: string[];
+  "RSVP Status"?: RSVPStatus;
   "Verstuurd op"?: string;
   Notities?: string;
 }
@@ -201,10 +209,11 @@ export async function getRecord<T extends TableName>(
 export async function createRecord<T extends TableName>(
   table: T,
   fields: Partial<FieldsFor<T>>,
+  options?: { typecast?: boolean },
 ): Promise<AirtableRecord<FieldsFor<T>>> {
   return airtableFetch(encodeURIComponent(table), {
     method: "POST",
-    body: JSON.stringify({ fields, typecast: true }),
+    body: JSON.stringify({ fields, typecast: options?.typecast ?? true }),
   });
 }
 
@@ -212,10 +221,11 @@ export async function updateRecord<T extends TableName>(
   table: T,
   id: string,
   fields: Partial<FieldsFor<T>>,
+  options?: { typecast?: boolean },
 ): Promise<AirtableRecord<FieldsFor<T>>> {
   return airtableFetch(`${encodeURIComponent(table)}/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ fields, typecast: true }),
+    body: JSON.stringify({ fields, typecast: options?.typecast ?? true }),
   });
 }
 
@@ -224,7 +234,57 @@ export async function updateTerugkoppeling(
   id: string,
   values: { Terugkoppeling: string; "Terugkoppeling door"?: TerugkoppelingDoor },
 ): Promise<AirtableRecord<FieldsFor<typeof table>>> {
-  return updateRecord(table, id, values as Partial<FieldsFor<typeof table>>);
+  // typecast uit: "Terugkoppeling door" is single select, mag geen nieuwe optie aanmaken.
+  return updateRecord(table, id, values as Partial<FieldsFor<typeof table>>, { typecast: false });
+}
+
+export async function createOccasion(
+  soort: OccasionSoort,
+  fields: Partial<WedstrijdFields> | Partial<EventFields>,
+): Promise<AirtableRecord<WedstrijdFields> | AirtableRecord<EventFields>> {
+  // typecast uit: Locatie en Type zijn single select, mogen geen nieuwe optie aanmaken.
+  return soort === "Wedstrijd"
+    ? createRecord("Wedstrijden", fields as Partial<WedstrijdFields>, { typecast: false })
+    : createRecord("Events", fields as Partial<EventFields>, { typecast: false });
+}
+
+export interface OccasionSelectOptions {
+  wedstrijdLocaties: string[];
+  wedstrijdTypes: string[];
+  eventTypes: string[];
+}
+
+export async function getOccasionSelectOptions(): Promise<OccasionSelectOptions> {
+  const { baseId, token } = getConfig();
+
+  const res = await fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Airtable Meta API fout (${res.status}): ${body}`);
+  }
+
+  const data: {
+    tables: Array<{
+      name: string;
+      fields: Array<{ name: string; options?: { choices?: Array<{ name: string }> } }>;
+    }>;
+  } = await res.json();
+
+  function choicesFor(tableName: string, fieldName: string): string[] {
+    const table = data.tables.find((t) => t.name === tableName);
+    const field = table?.fields.find((f) => f.name === fieldName);
+    return field?.options?.choices?.map((c) => c.name) ?? [];
+  }
+
+  return {
+    wedstrijdLocaties: choicesFor("Wedstrijden", "Locatie"),
+    wedstrijdTypes: choicesFor("Wedstrijden", "Type"),
+    eventTypes: choicesFor("Events", "Type"),
+  };
 }
 
 export async function deleteRecord<T extends TableName>(
