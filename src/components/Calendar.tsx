@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { OccasionSelectOptions, OccasionSoort, RSVPStatus } from "@/lib/airtable";
+import type { OccasionSelectOptions, RSVPStatus } from "@/lib/airtable";
 import { contactFullName } from "@/lib/airtable";
-import { createOccasion, fetchOccasionSelectOptions } from "@/lib/airtableClient";
+import { createOccasion, fetchOccasionSelectOptions, updateOccasion } from "@/lib/airtableClient";
 import { useOccasions } from "@/lib/useOccasions";
 import OccasionsTable from "@/components/OccasionsTable";
+import OccasionForm, { EMPTY_OCCASION_FORM_VALUES, type OccasionFormValues } from "@/components/OccasionForm";
 
 const RSVP_STYLES: Record<RSVPStatus, string> = {
   Ja: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
@@ -13,62 +14,36 @@ const RSVP_STYLES: Record<RSVPStatus, string> = {
   "Wacht op antwoord": "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
 };
 
-const EMPTY_OCCASION_FORM = {
-  soort: "Wedstrijd" as OccasionSoort,
-  naam: "",
-  datum: "",
-  tijd: "",
-  locatie: "",
-  type: "",
-};
-
 export default function Calendar() {
   const { occasions, contactsById, loading, error, invitesFor, rsvpCounts, reload } = useOccasions();
   const [selectedOccasionId, setSelectedOccasionId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const [selectOptions, setSelectOptions] = useState<OccasionSelectOptions | null>(null);
-  const [occasionForm, setOccasionForm] = useState(EMPTY_OCCASION_FORM);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [createFormKey, setCreateFormKey] = useState(0);
 
   useEffect(() => {
     fetchOccasionSelectOptions()
       .then(setSelectOptions)
-      .catch((err) => setCreateError(err instanceof Error ? err.message : "Kon opties niet laden."));
+      .catch((err) => setOptionsError(err instanceof Error ? err.message : "Kon opties niet laden."));
   }, []);
 
-  const locatieOpties = occasionForm.soort === "Wedstrijd" ? selectOptions?.wedstrijdLocaties ?? [] : [];
-  const typeOpties =
-    occasionForm.soort === "Wedstrijd" ? selectOptions?.wedstrijdTypes ?? [] : selectOptions?.eventTypes ?? [];
+  const aanwezigOpties = {
+    wedstrijd: selectOptions?.wedstrijdAanwezig ?? [],
+    event: selectOptions?.eventAanwezig ?? [],
+  };
 
-  function handleSoortChange(soort: OccasionSoort) {
-    setOccasionForm({ ...occasionForm, soort, locatie: "", type: "" });
-  }
-
-  async function handleCreateOccasion(e: React.FormEvent) {
-    e.preventDefault();
-    if (!occasionForm.naam.trim() || !occasionForm.datum) {
-      setCreateError("Naam en datum zijn verplicht.");
-      return;
-    }
-
-    setCreating(true);
-    setCreateError(null);
-    try {
-      await createOccasion(occasionForm.soort, {
-        Naam: occasionForm.naam,
-        Datum: occasionForm.datum,
-        ...(occasionForm.tijd ? { Tijd: occasionForm.tijd } : {}),
-        ...(occasionForm.locatie ? { Locatie: occasionForm.locatie } : {}),
-        ...(occasionForm.type ? { Type: occasionForm.type } : {}),
-      });
-      setOccasionForm({ ...EMPTY_OCCASION_FORM, soort: occasionForm.soort });
-      await reload();
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Aanmaken mislukt.");
-    } finally {
-      setCreating(false);
-    }
+  async function handleCreate(values: OccasionFormValues) {
+    await createOccasion(values.soort, {
+      Naam: values.naam,
+      Datum: values.datum,
+      Tijd: values.tijd,
+      Locatie: values.locatie,
+      Aanwezig: values.aanwezig,
+    });
+    setCreateFormKey((k) => k + 1);
+    await reload();
   }
 
   const upcoming = useMemo(() => {
@@ -91,6 +66,19 @@ export default function Calendar() {
   const selectedOccasion = upcoming.find((o) => o.id === selectedOccasionId) ?? null;
   const selectedInvites = selectedOccasion ? invitesFor(selectedOccasion) : [];
 
+  async function handleUpdate(values: OccasionFormValues) {
+    if (!selectedOccasion) return;
+    await updateOccasion(selectedOccasion.table, selectedOccasion.id, {
+      Naam: values.naam,
+      Datum: values.datum,
+      Tijd: values.tijd,
+      Locatie: values.locatie,
+      Aanwezig: values.aanwezig,
+    });
+    setEditing(false);
+    await reload();
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -104,104 +92,20 @@ export default function Calendar() {
         </div>
       )}
 
-      {createError && (
+      {optionsError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          {createError}
+          {optionsError}
         </div>
       )}
 
-      <form
-        onSubmit={handleCreateOccasion}
-        className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:grid-cols-2 dark:border-zinc-800 dark:bg-zinc-900"
-      >
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Soort</label>
-          <select
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-            value={occasionForm.soort}
-            onChange={(e) => handleSoortChange(e.target.value as OccasionSoort)}
-          >
-            <option value="Wedstrijd">Wedstrijd</option>
-            <option value="Event">Event</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Naam *</label>
-          <input
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-            value={occasionForm.naam}
-            onChange={(e) => setOccasionForm({ ...occasionForm, naam: e.target.value })}
-            placeholder="Bijv. Cookaholics Open"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Datum *</label>
-          <input
-            type="date"
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-            value={occasionForm.datum}
-            onChange={(e) => setOccasionForm({ ...occasionForm, datum: e.target.value })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Tijd</label>
-          <input
-            type="time"
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-            value={occasionForm.tijd}
-            onChange={(e) => setOccasionForm({ ...occasionForm, tijd: e.target.value })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Locatie</label>
-          {occasionForm.soort === "Wedstrijd" ? (
-            <select
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-              value={occasionForm.locatie}
-              onChange={(e) => setOccasionForm({ ...occasionForm, locatie: e.target.value })}
-            >
-              <option value="">Kies...</option>
-              {locatieOpties.map((optie) => (
-                <option key={optie} value={optie}>
-                  {optie}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-              value={occasionForm.locatie}
-              onChange={(e) => setOccasionForm({ ...occasionForm, locatie: e.target.value })}
-              placeholder="Bijv. Kantoor Cookaholics"
-            />
-          )}
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Type</label>
-          <select
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
-            value={occasionForm.type}
-            onChange={(e) => setOccasionForm({ ...occasionForm, type: e.target.value })}
-          >
-            <option value="">Kies...</option>
-            {typeOpties.map((optie) => (
-              <option key={optie} value={optie}>
-                {optie}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={creating}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
-            {creating ? "Toevoegen..." : "Toevoegen"}
-          </button>
-        </div>
-      </form>
+      <OccasionForm
+        key={createFormKey}
+        initialValues={EMPTY_OCCASION_FORM_VALUES}
+        aanwezigOpties={aanwezigOpties}
+        onSubmit={handleCreate}
+        submitLabel="Toevoegen"
+        submittingLabel="Toevoegen..."
+      />
 
       {loading ? (
         <p className="text-sm text-zinc-500">Kalender laden...</p>
@@ -209,71 +113,119 @@ export default function Calendar() {
         <>
           <OccasionsTable
             rows={rows}
-            onSelect={setSelectedOccasionId}
+            onSelect={(id) => {
+              setSelectedOccasionId(id);
+              setEditing(false);
+            }}
             emptyLabel="Geen toekomstige wedstrijden of events."
           />
 
           {selectedOccasion ? (
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                    {selectedOccasion.type}
-                  </p>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                    {selectedOccasion.naam}
-                  </h3>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {new Date(selectedOccasion.datum).toLocaleDateString("nl-NL", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
+              {editing ? (
+                <>
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                      {selectedOccasion.type} bewerken
+                    </p>
+                  </div>
+                  <OccasionForm
+                    initialValues={{
+                      soort: selectedOccasion.type,
+                      naam: selectedOccasion.naam,
+                      datum: selectedOccasion.datum.slice(0, 10),
+                      tijd: selectedOccasion.tijd ?? "",
+                      locatie: selectedOccasion.locatie ?? "",
+                      aanwezig: selectedOccasion.aanwezig ?? [],
+                    }}
+                    soortLocked
+                    aanwezigOpties={aanwezigOpties}
+                    onSubmit={handleUpdate}
+                    onCancel={() => setEditing(false)}
+                    submitLabel="Wijzigingen opslaan"
+                    submittingLabel="Opslaan..."
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        {selectedOccasion.type}
+                      </p>
+                      <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                        {selectedOccasion.naam}
+                      </h3>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        {new Date(selectedOccasion.datum).toLocaleDateString("nl-NL", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                        {selectedOccasion.tijd ? ` · ${selectedOccasion.tijd}` : ""}
+                        {selectedOccasion.locatie ? ` · ${selectedOccasion.locatie}` : ""}
+                      </p>
+                      {selectedOccasion.aanwezig && selectedOccasion.aanwezig.length > 0 && (
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          Aanwezig: {selectedOccasion.aanwezig.join(", ")}
+                        </p>
+                      )}
+                      {selectedOccasion.notities && (
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{selectedOccasion.notities}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditing(true)}
+                        className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                      >
+                        Bewerken
+                      </button>
+                      <button
+                        onClick={() => setSelectedOccasionId(null)}
+                        className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                      >
+                        Sluiten
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2 text-xs">
+                    {(Object.entries(rsvpCounts(selectedOccasion)) as [RSVPStatus, number][]).map(
+                      ([status, count]) => (
+                        <span
+                          key={status}
+                          className={`rounded-full px-2.5 py-1 font-medium ${RSVP_STYLES[status]}`}
+                        >
+                          {status}: {count}
+                        </span>
+                      ),
+                    )}
+                  </div>
+
+                  <ul className="mt-4 flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {selectedInvites.length === 0 && (
+                      <li className="py-2 text-sm text-zinc-500">Nog geen uitnodigingen verstuurd.</li>
+                    )}
+                    {selectedInvites.map((inv) => {
+                      const contactId = inv.fields.Contact?.[0];
+                      const contact = contactId ? contactsById.get(contactId) : undefined;
+                      const status = inv.fields["RSVP Status"] ?? "Wacht op antwoord";
+                      return (
+                        <li key={inv.id} className="flex items-center justify-between py-2 text-sm">
+                          <span className="text-zinc-900 dark:text-zinc-50">
+                            {contact ? contactFullName(contact.fields) : "Onbekend contact"}
+                          </span>
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${RSVP_STYLES[status]}`}>
+                            {status}
+                          </span>
+                        </li>
+                      );
                     })}
-                    {selectedOccasion.locatie ? ` · ${selectedOccasion.locatie}` : ""}
-                  </p>
-                  {selectedOccasion.notities && (
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{selectedOccasion.notities}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedOccasionId(null)}
-                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-                >
-                  Sluiten
-                </button>
-              </div>
-
-              <div className="mt-4 flex gap-2 text-xs">
-                {(Object.entries(rsvpCounts(selectedOccasion)) as [RSVPStatus, number][]).map(
-                  ([status, count]) => (
-                    <span key={status} className={`rounded-full px-2.5 py-1 font-medium ${RSVP_STYLES[status]}`}>
-                      {status}: {count}
-                    </span>
-                  ),
-                )}
-              </div>
-
-              <ul className="mt-4 flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
-                {selectedInvites.length === 0 && (
-                  <li className="py-2 text-sm text-zinc-500">Nog geen uitnodigingen verstuurd.</li>
-                )}
-                {selectedInvites.map((inv) => {
-                  const contactId = inv.fields.Contact?.[0];
-                  const contact = contactId ? contactsById.get(contactId) : undefined;
-                  const status = inv.fields["RSVP Status"] ?? "Wacht op antwoord";
-                  return (
-                    <li key={inv.id} className="flex items-center justify-between py-2 text-sm">
-                      <span className="text-zinc-900 dark:text-zinc-50">
-                        {contact ? contactFullName(contact.fields) : "Onbekend contact"}
-                      </span>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${RSVP_STYLES[status]}`}>
-                        {status}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+                  </ul>
+                </>
+              )}
             </div>
           ) : (
             <p className="text-sm text-zinc-500">Klik op een wedstrijd of event in de tabel voor details.</p>

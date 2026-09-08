@@ -73,10 +73,19 @@ export async function createOccasion(
   soort: OccasionSoort,
   fields: Partial<WedstrijdFields> | Partial<EventFields>,
 ): Promise<AirtableRecord<WedstrijdFields> | AirtableRecord<EventFields>> {
-  // typecast uit: Locatie en Type zijn single select, mogen geen nieuwe optie aanmaken.
+  // typecast uit: Aanwezig is multi select, mag geen nieuwe optie aanmaken.
   return soort === "Wedstrijd"
     ? createAirtableRecord("Wedstrijden", fields as Partial<WedstrijdFields>, { typecast: false })
     : createAirtableRecord("Events", fields as Partial<EventFields>, { typecast: false });
+}
+
+export async function updateOccasion(
+  table: "Wedstrijden" | "Events",
+  id: string,
+  fields: Partial<WedstrijdFields> | Partial<EventFields>,
+): Promise<AirtableRecord<FieldsFor<typeof table>>> {
+  // typecast uit: Aanwezig is multi select, mag geen nieuwe optie aanmaken.
+  return updateAirtableRecord(table, id, fields as Partial<FieldsFor<typeof table>>, { typecast: false });
 }
 
 export async function fetchOccasionSelectOptions(): Promise<OccasionSelectOptions> {

@@ -18,7 +18,9 @@ export type Occasion = {
   type: "Wedstrijd" | "Event";
   naam: string;
   datum: string;
+  tijd?: string;
   locatie?: string;
+  aanwezig?: string[];
   notities?: string;
   terugkoppeling?: string;
   terugkoppelingDoor?: TerugkoppelingDoor;
@@ -54,7 +56,9 @@ export function useOccasions() {
             type: "Wedstrijd",
             naam: w.fields.Naam,
             datum: w.fields.Datum,
+            tijd: w.fields.Tijd,
             locatie: w.fields.Locatie,
+            aanwezig: w.fields.Aanwezig,
             notities: w.fields.Notities,
             terugkoppeling: w.fields.Terugkoppeling,
             terugkoppelingDoor: w.fields["Terugkoppeling door"],
@@ -67,7 +71,9 @@ export function useOccasions() {
             type: "Event",
             naam: ev.fields.Naam,
             datum: ev.fields.Datum,
+            tijd: ev.fields.Tijd,
             locatie: ev.fields.Locatie,
+            aanwezig: ev.fields.Aanwezig,
             notities: ev.fields.Notities,
             terugkoppeling: ev.fields.Terugkoppeling,
             terugkoppelingDoor: ev.fields["Terugkoppeling door"],
