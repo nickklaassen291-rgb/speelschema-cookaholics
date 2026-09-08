@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   AirtableRecord,
+  Club,
   ContactFields,
   RSVPStatus,
   TerugkoppelingDoor,
@@ -23,6 +24,8 @@ export type Occasion = {
   aanwezig?: string[];
   terugkoppeling?: string;
   terugkoppelingDoor?: TerugkoppelingDoor;
+  club?: Club;
+  businessclubEvent?: boolean;
 };
 
 export type Uitnodiging = AirtableRecord<UitnodigingFields>;
@@ -64,6 +67,7 @@ export function useOccasions() {
             aanwezig: w.fields.Aanwezig,
             terugkoppeling: w.fields.Terugkoppeling,
             terugkoppelingDoor: w.fields["Terugkoppeling door"],
+            club: w.fields.Club,
           })),
         ...events
           .filter((ev) => ev.fields.Datum)
@@ -78,6 +82,8 @@ export function useOccasions() {
             aanwezig: ev.fields.Aanwezig,
             terugkoppeling: ev.fields.Terugkoppeling,
             terugkoppelingDoor: ev.fields["Terugkoppeling door"],
+            club: ev.fields.Club,
+            businessclubEvent: ev.fields["Businessclub event"],
           })),
       ];
 

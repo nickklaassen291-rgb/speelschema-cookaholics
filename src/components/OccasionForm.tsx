@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { OccasionSoort } from "@/lib/airtable";
+import type { Club, OccasionSoort } from "@/lib/airtable";
+import { CLUBS } from "@/lib/airtable";
 
 export type OccasionFormValues = {
   soort: OccasionSoort;
@@ -10,6 +11,8 @@ export type OccasionFormValues = {
   tijd: string;
   locatie: string;
   aanwezig: string[];
+  club: Club | "";
+  businessclubEvent: boolean;
 };
 
 export const EMPTY_OCCASION_FORM_VALUES: OccasionFormValues = {
@@ -19,6 +22,8 @@ export const EMPTY_OCCASION_FORM_VALUES: OccasionFormValues = {
   tijd: "",
   locatie: "",
   aanwezig: [],
+  club: "",
+  businessclubEvent: false,
 };
 
 type Props = {
@@ -99,6 +104,21 @@ export default function OccasionForm({
         </select>
       </div>
       <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Club</label>
+        <select
+          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
+          value={values.club}
+          onChange={(e) => setValues({ ...values, club: e.target.value as Club | "" })}
+        >
+          <option value="">Kies een club...</option>
+          {CLUBS.map((club) => (
+            <option key={club} value={club}>
+              {club}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Naam *</label>
         <input
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950"
@@ -134,6 +154,19 @@ export default function OccasionForm({
           placeholder="Bijv. Sportpark De Lange Weide"
         />
       </div>
+      {values.soort === "Event" && (
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <label className="flex items-center gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              className="rounded border-zinc-300 dark:border-zinc-700"
+              checked={values.businessclubEvent}
+              onChange={(e) => setValues({ ...values, businessclubEvent: e.target.checked })}
+            />
+            Businessclub event
+          </label>
+        </div>
+      )}
       <div className="flex flex-col gap-1 sm:col-span-2">
         <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
           Aanwezig namens Cookaholics

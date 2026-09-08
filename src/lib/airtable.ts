@@ -71,6 +71,10 @@ export const TERUGKOPPELING_DOOR: TerugkoppelingDoor[] = [
   "Lynn",
 ];
 
+export type Club = "FC Den Bosch" | "RKC Waalwijk" | "Overig";
+
+export const CLUBS: Club[] = ["FC Den Bosch", "RKC Waalwijk", "Overig"];
+
 export interface AirtableRecord<T> {
   id: string;
   createdTime: string;
@@ -96,6 +100,7 @@ export interface WedstrijdFields {
   Tijd?: string;
   Locatie?: string;
   Type?: string;
+  Club?: Club;
   Aanwezig?: string[];
   Terugkoppeling?: string;
   "Terugkoppeling door"?: TerugkoppelingDoor;
@@ -106,6 +111,8 @@ export interface EventFields {
   Datum: string;
   Tijd?: string;
   Type?: string;
+  Club?: Club;
+  "Businessclub event"?: boolean;
   Locatie?: string;
   Aanwezig?: string[];
   Uitnodigingen?: string[];

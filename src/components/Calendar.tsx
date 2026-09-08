@@ -15,6 +15,36 @@ import { useOccasions } from "@/lib/useOccasions";
 import OccasionsTable from "@/components/OccasionsTable";
 import OccasionForm, { EMPTY_OCCASION_FORM_VALUES, type OccasionFormValues } from "@/components/OccasionForm";
 import InviteList, { RSVP_STYLES } from "@/components/InviteList";
+import type { Occasion } from "@/lib/useOccasions";
+
+type OccasionFilterKey = "wedstrijdenFcDb" | "businessclubFcDb" | "rkc" | "overigeEvents";
+
+const OCCASION_FILTERS: { key: OccasionFilterKey; label: string }[] = [
+  { key: "wedstrijdenFcDb", label: "Wedstrijden FC Den Bosch" },
+  { key: "businessclubFcDb", label: "Businessclub events FC Den Bosch" },
+  { key: "rkc", label: "RKC Waalwijk" },
+  { key: "overigeEvents", label: "Overige events" },
+];
+
+function matchesFilter(o: Occasion, key: OccasionFilterKey): boolean {
+  switch (key) {
+    case "wedstrijdenFcDb":
+      return o.type === "Wedstrijd" && o.club === "FC Den Bosch";
+    case "businessclubFcDb":
+      return o.type === "Event" && o.club === "FC Den Bosch" && !!o.businessclubEvent;
+    case "rkc":
+      return o.club === "RKC Waalwijk";
+    case "overigeEvents":
+      return o.type === "Event" && o.club !== "RKC Waalwijk" && !(o.club === "FC Den Bosch" && o.businessclubEvent);
+  }
+}
+
+function matchesAnyFilter(o: Occasion, keys: Set<OccasionFilterKey>): boolean {
+  for (const key of keys) {
+    if (matchesFilter(o, key)) return true;
+  }
+  return false;
+}
 
 export default function Calendar() {
   const { occasions, contacts, contactsById, loading, error, invitesFor, rsvpCounts, gastenCount, reload } =
@@ -53,17 +83,31 @@ export default function Calendar() {
       Tijd: values.tijd,
       Locatie: values.locatie,
       Aanwezig: values.aanwezig,
+      ...(values.club ? { Club: values.club } : {}),
+      ...(values.soort === "Event" ? { "Businessclub event": values.businessclubEvent } : {}),
     });
     setCreateFormKey((k) => k + 1);
     await reload();
+  }
+
+  const [activeFilters, setActiveFilters] = useState<Set<OccasionFilterKey>>(new Set());
+
+  function toggleFilter(key: OccasionFilterKey) {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   const upcoming = useMemo(() => {
     const todayKey = new Date().toISOString().slice(0, 10);
     return occasions
       .filter((o) => o.datum.slice(0, 10) >= todayKey)
+      .filter((o) => activeFilters.size === 0 || matchesAnyFilter(o, activeFilters))
       .sort((a, b) => a.datum.localeCompare(b.datum));
-  }, [occasions]);
+  }, [occasions, activeFilters]);
 
   const rows = useMemo(
     () =>
@@ -163,6 +207,8 @@ export default function Calendar() {
       Tijd: values.tijd,
       Locatie: values.locatie,
       Aanwezig: values.aanwezig,
+      ...(values.club ? { Club: values.club } : {}),
+      ...(values.soort === "Event" ? { "Businessclub event": values.businessclubEvent } : {}),
     });
     setEditing(false);
     await reload();
@@ -195,6 +241,35 @@ export default function Calendar() {
         submitLabel="Toevoegen"
         submittingLabel="Toevoegen..."
       />
+
+      <div className="flex flex-wrap gap-2">
+        {OCCASION_FILTERS.map(({ key, label }) => {
+          const active = activeFilters.has(key);
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleFilter(key)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                active
+                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                  : "border-zinc-300 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+        {activeFilters.size > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveFilters(new Set())}
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Filters wissen
+          </button>
+        )}
+      </div>
 
       {loading ? (
         <p className="text-sm text-zinc-500">Kalender laden...</p>
@@ -229,6 +304,8 @@ export default function Calendar() {
                       tijd: selectedOccasion.tijd ?? "",
                       locatie: selectedOccasion.locatie ?? "",
                       aanwezig: selectedOccasion.aanwezig ?? [],
+                      club: selectedOccasion.club ?? "",
+                      businessclubEvent: selectedOccasion.businessclubEvent ?? false,
                     }}
                     soortLocked
                     aanwezigOpties={aanwezigOpties}
