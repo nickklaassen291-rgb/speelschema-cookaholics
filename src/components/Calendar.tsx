@@ -304,18 +304,18 @@ export default function Calendar() {
         <>
           <OccasionsTable
             rows={rows}
+            selectedId={selectedOccasionId}
             onSelect={(id) => {
-              setSelectedOccasionId(id);
+              setSelectedOccasionId((current) => (current === id ? null : id));
               setEditing(false);
               setGastZoekterm("");
               setLinkError(null);
               setInviteError(null);
             }}
             emptyLabel="Geen toekomstige wedstrijden of events."
-          />
-
-          {selectedOccasion ? (
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            renderDetail={() =>
+              !selectedOccasion ? null : (
+              <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               {editing ? (
                 <>
                   <div className="mb-3 flex items-center justify-between">
@@ -504,8 +504,11 @@ export default function Calendar() {
                   </div>
                 </>
               )}
-            </div>
-          ) : (
+              </div>
+              )
+            }
+          />
+          {!selectedOccasion && (
             <p className="text-sm text-zinc-500">Klik op een wedstrijd of event in de tabel voor details.</p>
           )}
         </>

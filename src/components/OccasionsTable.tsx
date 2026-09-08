@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment, type ReactNode } from "react";
 import type { Occasion } from "@/lib/useOccasions";
 
 function formatShortDate(iso: string) {
@@ -34,12 +35,23 @@ type Props = {
   showTerugkoppeling?: boolean;
   onSelect: (id: string) => void;
   emptyLabel: string;
+  selectedId?: string | null;
+  renderDetail?: (occasion: Occasion) => ReactNode;
 };
 
-export default function OccasionsTable({ rows, showTerugkoppeling, onSelect, emptyLabel }: Props) {
+export default function OccasionsTable({
+  rows,
+  showTerugkoppeling,
+  onSelect,
+  emptyLabel,
+  selectedId,
+  renderDetail,
+}: Props) {
   if (rows.length === 0) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">{emptyLabel}</p>;
   }
+
+  const columnCount = 7 + (showTerugkoppeling ? 1 : 0);
 
   return (
     <div className="min-w-0 overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -59,11 +71,14 @@ export default function OccasionsTable({ rows, showTerugkoppeling, onSelect, emp
         <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {rows.map(({ occasion, gasten, ja, terugkoppelingPreview }) => {
             const waarschuwing = needsAanwezigWaarschuwing(occasion);
+            const isSelected = occasion.id === selectedId;
             return (
+            <Fragment key={occasion.id}>
             <tr
-              key={occasion.id}
               onClick={() => onSelect(occasion.id)}
-              className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className={`cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
+                isSelected ? "bg-zinc-50 dark:bg-zinc-800" : ""
+              }`}
             >
               <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">{formatShortDate(occasion.datum)}</td>
               <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">{occasion.naam}</td>
@@ -88,6 +103,14 @@ export default function OccasionsTable({ rows, showTerugkoppeling, onSelect, emp
                 </td>
               )}
             </tr>
+            {isSelected && renderDetail && (
+              <tr>
+                <td colSpan={columnCount} className="bg-zinc-50 p-4 dark:bg-zinc-950/40">
+                  {renderDetail(occasion)}
+                </td>
+              </tr>
+            )}
+            </Fragment>
             );
           })}
         </tbody>

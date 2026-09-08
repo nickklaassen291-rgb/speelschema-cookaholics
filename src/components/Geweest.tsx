@@ -141,11 +141,11 @@ export default function Geweest() {
           <OccasionsTable
             rows={rows}
             showTerugkoppeling
-            onSelect={setSelectedOccasionId}
+            selectedId={selectedOccasionId}
+            onSelect={(id) => setSelectedOccasionId((current) => (current === id ? null : id))}
             emptyLabel="Geen afgelopen wedstrijden of events."
-          />
-
-          {selectedOccasion ? (
+            renderDetail={() =>
+              !selectedOccasion ? null : (
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -245,7 +245,10 @@ export default function Geweest() {
                 </div>
               </div>
             </div>
-          ) : (
+              )
+            }
+          />
+          {!selectedOccasion && (
             <p className="text-sm text-zinc-500">Klik op een wedstrijd of event in de tabel voor details.</p>
           )}
         </>
