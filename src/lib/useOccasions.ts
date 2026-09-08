@@ -28,6 +28,10 @@ export type Occasion = {
 export type Uitnodiging = AirtableRecord<UitnodigingFields>;
 export type Contact = AirtableRecord<ContactFields>;
 
+export function aantalPersonen(invite: Uitnodiging): number {
+  return invite.fields["Aantal personen"] ?? 1;
+}
+
 export function useOccasions() {
   const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [uitnodigingen, setUitnodigingen] = useState<Uitnodiging[]>([]);
@@ -113,9 +117,16 @@ export function useOccasions() {
       const counts: Record<RSVPStatus, number> = { Ja: 0, Nee: 0, "Wacht op antwoord": 0 };
       for (const inv of invites) {
         const status = inv.fields["RSVP Status"];
-        if (status) counts[status] += 1;
+        if (status) counts[status] += aantalPersonen(inv);
       }
       return counts;
+    },
+    [invitesFor],
+  );
+
+  const gastenCount = useCallback(
+    (occasion: Occasion): number => {
+      return invitesFor(occasion).reduce((sum, inv) => sum + aantalPersonen(inv), 0);
     },
     [invitesFor],
   );
@@ -128,6 +139,7 @@ export function useOccasions() {
     error,
     invitesFor,
     rsvpCounts,
+    gastenCount,
     reload: load,
   };
 }

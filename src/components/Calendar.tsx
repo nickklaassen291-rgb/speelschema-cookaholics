@@ -1,26 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { OccasionSelectOptions, RSVPStatus, TerugkoppelingDoor } from "@/lib/airtable";
+import type { AirtableRecord, OccasionSelectOptions, RSVPStatus, TerugkoppelingDoor, UitnodigingFields } from "@/lib/airtable";
 import { contactFullName, TERUGKOPPELING_DOOR } from "@/lib/airtable";
 import {
   createAirtableRecord,
   createOccasion,
+  deleteAirtableRecord,
   fetchOccasionSelectOptions,
+  updateAirtableRecord,
   updateOccasion,
 } from "@/lib/airtableClient";
 import { useOccasions } from "@/lib/useOccasions";
 import OccasionsTable from "@/components/OccasionsTable";
 import OccasionForm, { EMPTY_OCCASION_FORM_VALUES, type OccasionFormValues } from "@/components/OccasionForm";
-
-const RSVP_STYLES: Record<RSVPStatus, string> = {
-  Ja: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  Nee: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-  "Wacht op antwoord": "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-};
+import InviteList, { RSVP_STYLES } from "@/components/InviteList";
 
 export default function Calendar() {
-  const { occasions, contacts, contactsById, loading, error, invitesFor, rsvpCounts, reload } = useOccasions();
+  const { occasions, contacts, contactsById, loading, error, invitesFor, rsvpCounts, gastenCount, reload } =
+    useOccasions();
   const [selectedOccasionId, setSelectedOccasionId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
@@ -28,6 +26,9 @@ export default function Calendar() {
   const [gastZoekterm, setGastZoekterm] = useState("");
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+
+  const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const [selectOptions, setSelectOptions] = useState<OccasionSelectOptions | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export default function Calendar() {
     wedstrijd: selectOptions?.wedstrijdAanwezig ?? [],
     event: selectOptions?.eventAanwezig ?? [],
   };
+  const rsvpOpties = selectOptions?.rsvpStatussen ?? [];
 
   async function handleCreate(values: OccasionFormValues) {
     await createOccasion(values.soort, {
@@ -67,10 +69,10 @@ export default function Calendar() {
     () =>
       upcoming.map((occasion) => ({
         occasion,
-        gasten: invitesFor(occasion).length,
+        gasten: gastenCount(occasion),
         ja: rsvpCounts(occasion).Ja,
       })),
-    [upcoming, invitesFor, rsvpCounts],
+    [upcoming, gastenCount, rsvpCounts],
   );
 
   const selectedOccasion = upcoming.find((o) => o.id === selectedOccasionId) ?? null;
@@ -101,6 +103,7 @@ export default function Calendar() {
         ...(selectedOccasion.type === "Wedstrijd" ? { Wedstrijd: [selectedOccasion.id] } : {}),
         ...(selectedOccasion.type === "Event" ? { Events: [selectedOccasion.id] } : {}),
         "RSVP Status": "Wacht op antwoord",
+        "Aantal personen": 1,
         ...(uitgenodigdDoor ? { "Uitgenodigd door": uitgenodigdDoor } : {}),
       });
       setGastZoekterm("");
@@ -109,6 +112,46 @@ export default function Calendar() {
       setLinkError(err instanceof Error ? err.message : "Koppelen mislukt.");
     } finally {
       setLinking(false);
+    }
+  }
+
+  async function handleRsvpChange(invite: AirtableRecord<UitnodigingFields>, status: RSVPStatus) {
+    setBusyInviteId(invite.id);
+    setInviteError(null);
+    try {
+      await updateAirtableRecord("Uitnodigingen", invite.id, { "RSVP Status": status }, { typecast: false });
+      await reload();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Bijwerken van RSVP mislukt.");
+    } finally {
+      setBusyInviteId(null);
+    }
+  }
+
+  async function handleAantalChange(invite: AirtableRecord<UitnodigingFields>, aantal: number) {
+    setBusyInviteId(invite.id);
+    setInviteError(null);
+    try {
+      await updateAirtableRecord("Uitnodigingen", invite.id, { "Aantal personen": aantal }, { typecast: false });
+      await reload();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Bijwerken van aantal personen mislukt.");
+    } finally {
+      setBusyInviteId(null);
+    }
+  }
+
+  async function handleRemoveInvite(invite: AirtableRecord<UitnodigingFields>) {
+    if (!confirm("Weet je zeker dat je deze uitnodiging wilt verwijderen?")) return;
+    setBusyInviteId(invite.id);
+    setInviteError(null);
+    try {
+      await deleteAirtableRecord("Uitnodigingen", invite.id);
+      await reload();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Verwijderen van uitnodiging mislukt.");
+    } finally {
+      setBusyInviteId(null);
     }
   }
 
@@ -164,6 +207,7 @@ export default function Calendar() {
               setEditing(false);
               setGastZoekterm("");
               setLinkError(null);
+              setInviteError(null);
             }}
             emptyLabel="Geen toekomstige wedstrijden of events."
           />
@@ -249,26 +293,24 @@ export default function Calendar() {
                     )}
                   </div>
 
-                  <ul className="mt-4 flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
-                    {selectedInvites.length === 0 && (
-                      <li className="py-2 text-sm text-zinc-500">Nog geen uitnodigingen verstuurd.</li>
-                    )}
-                    {selectedInvites.map((inv) => {
-                      const contactId = inv.fields.Contact?.[0];
-                      const contact = contactId ? contactsById.get(contactId) : undefined;
-                      const status = inv.fields["RSVP Status"] ?? "Wacht op antwoord";
-                      return (
-                        <li key={inv.id} className="flex items-center justify-between py-2 text-sm">
-                          <span className="text-zinc-900 dark:text-zinc-50">
-                            {contact ? contactFullName(contact.fields) : "Onbekend contact"}
-                          </span>
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${RSVP_STYLES[status]}`}>
-                            {status}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  {inviteError && (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                      {inviteError}
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <InviteList
+                      invites={selectedInvites}
+                      contactsById={contactsById}
+                      rsvpOpties={rsvpOpties}
+                      onRsvpChange={handleRsvpChange}
+                      onAantalChange={handleAantalChange}
+                      onRemove={handleRemoveInvite}
+                      busyId={busyInviteId}
+                      emptyLabel="Nog geen uitnodigingen verstuurd."
+                    />
+                  </div>
 
                   <div className="mt-4 flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                     <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Gast koppelen</p>

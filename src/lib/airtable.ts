@@ -40,6 +40,7 @@
  *   - RSVP Status (single select: "Ja" | "Nee" | "Wacht op antwoord")
  *   - Uitgenodigd door (text)
  *   - Verstuurd op (date)
+ *   - Aantal personen (number, integer, default 1)
  *
  * Dit bestand draait alleen server-side (gebruikt AIRTABLE_API_TOKEN, geen
  * NEXT_PUBLIC_ prefix). Client components praten met /api/airtable.
@@ -121,6 +122,7 @@ export interface UitnodigingFields {
   "RSVP Status"?: RSVPStatus;
   "Uitgenodigd door"?: string;
   "Verstuurd op"?: string;
+  "Aantal personen"?: number;
 }
 
 export type FieldsFor<T extends TableName> = T extends "Contacten"
@@ -261,6 +263,7 @@ export async function updateOccasion(
 export interface OccasionSelectOptions {
   wedstrijdAanwezig: string[];
   eventAanwezig: string[];
+  rsvpStatussen: string[];
 }
 
 export async function getOccasionSelectOptions(): Promise<OccasionSelectOptions> {
@@ -292,6 +295,7 @@ export async function getOccasionSelectOptions(): Promise<OccasionSelectOptions>
   return {
     wedstrijdAanwezig: choicesFor("Wedstrijden", "Aanwezig"),
     eventAanwezig: choicesFor("Events", "Aanwezig"),
+    rsvpStatussen: choicesFor("Uitnodigingen", "RSVP Status"),
   };
 }
 
